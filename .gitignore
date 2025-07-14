@@ -1,0 +1,6 @@
+.cache
+.idea
+*.out
+*.spv
+*.vim
+.vscode

@@ -1,0 +1,5 @@
+-03
+-ansi
+-ffast-math
+-Werror
+-Weverything
