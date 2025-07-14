@@ -1,5 +1,5 @@
-#ifndef __RENDERER_H__
-#define __RENDERER_H__
+#ifndef RENDERER_H
+#define RENDERER_H
 
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_stdinc.h>
@@ -12,7 +12,7 @@ extern FFP_Renderer *ffp_create_renderer(SDL_Window *window, float fov);
 
 extern float ffp_get_renderer_fov(const FFP_Renderer *renderer);
 
-extern bool ffp_set_renderer_fov(FFP_Renderer *renderer, float fov);
+extern void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov);
 
 extern bool ffp_renderer_draw(FFP_Renderer *renderer);
 

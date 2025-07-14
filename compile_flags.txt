@@ -1,5 +1,6 @@
--03
 -ansi
 -ffast-math
+-O3
 -Werror
 -Weverything
+-Wno-padded

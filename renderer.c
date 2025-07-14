@@ -73,10 +73,6 @@ FFP_Renderer *ffp_create_renderer(SDL_Window *window, float fov)
     }
 
     renderer->fov = fov;
-    if (!set_projection_matrix(renderer)) {
-        ffp_destroy_renderer(renderer);
-        return NULL;
-    }
 
     return renderer;
 }
@@ -86,10 +82,9 @@ float ffp_get_renderer_fov(const FFP_Renderer *renderer)
     return renderer->fov;
 }
 
-bool ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
+void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
 {
     renderer->fov = fov;
-    return set_projection_matrix(renderer);
 }
 
 bool ffp_renderer_draw(FFP_Renderer *renderer)
@@ -97,6 +92,8 @@ bool ffp_renderer_draw(FFP_Renderer *renderer)
     SDL_GPUCommandBuffer   *commands = SDL_AcquireGPUCommandBuffer(renderer->device);
     SDL_GPUColorTargetInfo  target;
     SDL_GPURenderPass      *pass;
+
+    if (!set_projection_matrix(renderer)) return false;
 
     if (!commands) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
