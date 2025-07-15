@@ -13,8 +13,6 @@ struct FFP_Renderer {
     SDL_GPUDevice           *device;
     SDL_GPUTransferBuffer   *transbuf;
     SDL_GPUBufferBinding     vertbuf;
-    SDL_GPUShader           *vert_shader;
-    SDL_GPUShader           *frag_shader;
     SDL_GPUGraphicsPipeline *pipeline;
     float                    fov;
     float                    matrix[16];
@@ -35,103 +33,74 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
 
     if (!renderer) return NULL;
 
+    SDL_memset(&transbuf_info, 0, sizeof(transbuf_info));
+    SDL_memset(&vertbuf_info,  0, sizeof(vertbuf_info));
+    SDL_memset(&vertbuf_desc,  0, sizeof(vertbuf_desc));
+    SDL_memset( vertbuf_attrs, 0, sizeof(vertbuf_attrs));
+    SDL_memset(&target_desc,   0, sizeof(target_desc));
+    SDL_memset(&pipeline_info, 0, sizeof(pipeline_info));
+
     renderer->window = window;
 
     renderer->device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
     if (!renderer->device) {
-        SDL_free(renderer);
+        ffp_destroy_renderer(renderer);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
     if (!SDL_ClaimWindowForGPUDevice(renderer->device, renderer->window)) {
-        SDL_DestroyGPUDevice(renderer->device);
-        SDL_free(renderer);
+        ffp_destroy_renderer(renderer);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
-    SDL_memset(&transbuf_info, 0, sizeof(transbuf_info));
     transbuf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
     transbuf_info.size = sizeof(FFP_Triangle);
-
     renderer->transbuf = SDL_CreateGPUTransferBuffer(renderer->device, &transbuf_info);
     if (!renderer->transbuf) {
-        SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
-        SDL_DestroyGPUDevice(renderer->device);
-        SDL_free(renderer);
+        ffp_destroy_renderer(renderer);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
-    SDL_memset(&vertbuf_info, 0, sizeof(vertbuf_info));
     vertbuf_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     vertbuf_info.size = sizeof(FFP_Triangle);
-
     renderer->vertbuf.buffer = SDL_CreateGPUBuffer(renderer->device, &vertbuf_info);
     if (!renderer->vertbuf.buffer) {
-        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
-        SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
-        SDL_DestroyGPUDevice(renderer->device);
-        SDL_free(renderer);
+        ffp_destroy_renderer(renderer);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
-    renderer->vert_shader = load_shader(renderer->device, "./shader.vert.spv", 1);
-    if (!renderer->vert_shader) {
-        SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
-        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
-        SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
-        SDL_DestroyGPUDevice(renderer->device);
-        SDL_free(renderer);
-        return NULL;
-    }
-
-    renderer->frag_shader = load_shader(renderer->device, "./shader.frag.spv", 0);
-    if (!renderer->frag_shader) {
-        SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
-        SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
-        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
-        SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
-        SDL_DestroyGPUDevice(renderer->device);
-        SDL_free(renderer);
-        return NULL;
-    }
-
-    SDL_memset(&vertbuf_desc, 0, sizeof(vertbuf_desc));
-    vertbuf_desc.pitch = sizeof(FFP_VertexRGBA);
-
-    SDL_memset(vertbuf_attrs, 0, sizeof(vertbuf_attrs));
+    vertbuf_desc.pitch        = sizeof(FFP_VertexRGBA);
     vertbuf_attrs[0].location = 0;
     vertbuf_attrs[0].format   = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
     vertbuf_attrs[0].offset   = offsetof(FFP_VertexRGBA, position);
     vertbuf_attrs[1].location = 1;
     vertbuf_attrs[1].format   = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
     vertbuf_attrs[1].offset   = offsetof(FFP_VertexRGBA, color);
-
-    SDL_memset(&target_desc, 0, sizeof(target_desc));
-    target_desc.format = SDL_GetGPUSwapchainTextureFormat(renderer->device, renderer->window);
-
-    SDL_memset(&pipeline_info, 0, sizeof(pipeline_info));
-    pipeline_info.vertex_shader                                 = renderer->vert_shader;
-    pipeline_info.fragment_shader                               = renderer->frag_shader;
+    target_desc.format        = SDL_GetGPUSwapchainTextureFormat(renderer->device, renderer->window);
+    pipeline_info.vertex_shader                                 = load_shader(renderer->device, "./shader.vert.spv", 1);
+    pipeline_info.fragment_shader                               = load_shader(renderer->device, "./shader.frag.spv", 0);
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vertbuf_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers         = 1;
     pipeline_info.vertex_input_state.vertex_attributes          = vertbuf_attrs;
     pipeline_info.vertex_input_state.num_vertex_attributes      = sizeof(vertbuf_attrs) / sizeof(SDL_GPUVertexAttribute);
     pipeline_info.target_info.color_target_descriptions         = &target_desc;
     pipeline_info.target_info.num_color_targets                 = 1;
+    if (!pipeline_info.fragment_shader || !pipeline_info.fragment_shader) {
+        SDL_ReleaseGPUShader(renderer->device, pipeline_info.fragment_shader);
+        SDL_ReleaseGPUShader(renderer->device, pipeline_info.vertex_shader);
+        ffp_destroy_renderer(renderer);
+        return NULL;
+    }
 
     renderer->pipeline = SDL_CreateGPUGraphicsPipeline(renderer->device, &pipeline_info);
+    SDL_ReleaseGPUShader(renderer->device, pipeline_info.fragment_shader);
+    SDL_ReleaseGPUShader(renderer->device, pipeline_info.vertex_shader);
     if (!renderer->pipeline) {
-        SDL_ReleaseGPUShader(renderer->device, renderer->frag_shader);
-        SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
-        SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
-        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
-        SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
-        SDL_DestroyGPUDevice(renderer->device);
-        SDL_free(renderer);
+        ffp_destroy_renderer(renderer);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
@@ -239,8 +208,6 @@ bool ffp_renderer_draw(FFP_Renderer *renderer)
 void ffp_destroy_renderer(FFP_Renderer *renderer)
 {
     SDL_ReleaseGPUGraphicsPipeline(renderer->device, renderer->pipeline);
-    SDL_ReleaseGPUShader(renderer->device, renderer->frag_shader);
-    SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
     SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
     SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
     SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
