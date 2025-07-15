@@ -204,6 +204,10 @@ bool ffp_renderer_draw(FFP_Renderer *renderer)
     }
 
     SDL_memset(&target_info, 0, sizeof(target_info));
+    target_info.clear_color.r = 0.25f;
+    target_info.clear_color.g = 0.25f;
+    target_info.clear_color.b = 0.25f;
+    target_info.load_op = SDL_GPU_LOADOP_CLEAR;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer, renderer->window, &target_info.texture, NULL, NULL)) {
         SDL_CancelGPUCommandBuffer(command_buffer);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
