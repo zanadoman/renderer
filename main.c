@@ -7,9 +7,9 @@ Sint32 main(void)
     SDL_Window   *window;
     FFP_Renderer *renderer;
     float         vertices[9] = {
-         0.0,  0.5, -10.0,
-        -0.5, -0.5, -10.0,
-         0.5, -0.5, -10.0
+         0.0,  0.5, -1.0,
+        -0.5, -0.5, -1.0,
+         0.5, -0.5, -1.0
     };
     SDL_Event     event;
     bool          running = true;
