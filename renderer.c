@@ -218,8 +218,8 @@ void ffp_destroy_renderer(FFP_Renderer *renderer)
 FFP_Shader * load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms)
 {
     SDL_GPUShaderCreateInfo  info;
-    void                    *code;
-    SDL_GPUShader           *shader;
+    void                    *code   = NULL;
+    SDL_GPUShader           *shader = NULL;
 
     SDL_memset(&info, 0, sizeof(info));
 
