@@ -151,6 +151,7 @@ bool ffp_renderer_draw(FFP_Renderer *renderer)
 
     render_pass = SDL_BeginGPURenderPass(command_buffer, &target_info, 1, NULL);
     SDL_BindGPUGraphicsPipeline(render_pass, renderer->pipeline);
+    SDL_BindGPUVertexBuffers(render_pass, 0, &renderer->vertbuf, 1);
     SDL_PushGPUVertexUniformData(command_buffer, 0, renderer->matrix, sizeof(renderer->matrix));
     SDL_DrawGPUPrimitives(render_pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(render_pass);
