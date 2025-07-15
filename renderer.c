@@ -183,14 +183,14 @@ FFP_Shader * load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniform
 bool set_projection_matrix(FFP_Renderer *renderer)
 {
     Sint32 width, height;
-    float f = 1.0f / SDL_tanf(renderer->fov / 2.0f);
+    float focal = 1.0f / SDL_tanf(renderer->fov / 2.0f);
     if (!SDL_GetWindowSize(renderer->window, &width, &height)) return false;
-    renderer->matrix[0]  = f / ((float)width / (float)height);
+    renderer->matrix[0]  = focal / ((float)width / (float)height);
     renderer->matrix[1]  = 0.0f;
     renderer->matrix[2]  = 0.0f;
     renderer->matrix[3]  = 0.0f;
     renderer->matrix[4]  = 0.0f;
-    renderer->matrix[5]  = f;
+    renderer->matrix[5]  = focal;
     renderer->matrix[6]  = 0.0f;
     renderer->matrix[7]  = 0.0f;
     renderer->matrix[8]  = 0.0f;
