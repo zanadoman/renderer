@@ -6,12 +6,18 @@ Sint32 main(void)
 {
     SDL_Window   *window;
     FFP_Renderer *renderer;
+    float         vertices[9] = {
+         0.0,  0.5, -10.0,
+        -0.5, -0.5, -10.0,
+         0.5, -0.5, -10.0
+    };
     SDL_Event     event;
     bool          running = true;
 
     SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     window = SDL_CreateWindow("SDL_GPU", 800, 600, SDL_WINDOW_RESIZABLE);
     renderer = ffp_create_renderer(window, 60.0f / 180.0f * 3.14159f);
+    ffp_renderer_upload_vertices(renderer, vertices);
 
     while (running) {
         while (SDL_PollEvent(&event)) {

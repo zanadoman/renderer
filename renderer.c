@@ -101,7 +101,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     vertbuf_desc.pitch = sizeof(float) * 3;
 
     SDL_memset(&vertbuf_attr, 0, sizeof(vertbuf_attr));
-    vertbuf_attr.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    vertbuf_attr.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
 
     SDL_memset(&target_desc, 0, sizeof(target_desc));
     target_desc.format = SDL_GetGPUSwapchainTextureFormat(renderer->device, renderer->window);
@@ -142,6 +142,48 @@ float ffp_get_renderer_fov(const FFP_Renderer *renderer)
 void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
 {
     renderer->fov = fov;
+}
+
+bool ffp_renderer_upload_vertices(FFP_Renderer *renderer, float *vertices)
+{
+    void                          *transmem;
+    SDL_GPUCommandBuffer          *command_buffer;
+    SDL_GPUTransferBufferLocation  transbuf_loc;
+    SDL_GPUBufferRegion            vertbuf_reg;
+    SDL_GPUCopyPass               *copy_pass;
+
+    transmem = SDL_MapGPUTransferBuffer(renderer->device, renderer->transbuf, false);
+    if (!transmem) {
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return false;
+    }
+
+    SDL_memcpy(transmem, vertices, sizeof(float) * 9);
+    SDL_UnmapGPUTransferBuffer(renderer->device, renderer->transbuf);
+
+    command_buffer = SDL_AcquireGPUCommandBuffer(renderer->device);
+    if (!command_buffer) {
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return false;
+    }
+
+    SDL_memset(&transbuf_loc, 0, sizeof(transbuf_loc));
+    transbuf_loc.transfer_buffer = renderer->transbuf;
+
+    SDL_memset(&vertbuf_reg, 0, sizeof(vertbuf_reg));
+    vertbuf_reg.buffer = renderer->vertbuf.buffer;
+    vertbuf_reg.size   = sizeof(float) * 9;
+
+    copy_pass = SDL_BeginGPUCopyPass(command_buffer);
+    SDL_UploadToGPUBuffer(copy_pass, &transbuf_loc, &vertbuf_reg, false);
+    SDL_EndGPUCopyPass(copy_pass);
+
+    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) {
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return false;
+    }
+
+    return true;
 }
 
 bool ffp_renderer_draw(FFP_Renderer *renderer)
