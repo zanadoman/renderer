@@ -129,7 +129,7 @@ bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *tr
     SDL_GPUCopyPass               *copy_pass    = NULL;
 
     SDL_memset(&transbuf_loc, 0, sizeof(transbuf_loc));
-    SDL_memset(&vertbuf_reg, 0, sizeof(vertbuf_reg));
+    SDL_memset(&vertbuf_reg,  0, sizeof(vertbuf_reg));
 
     transmem = SDL_MapGPUTransferBuffer(renderer->device, renderer->transbuf, false);
     if (!transmem) {
