@@ -9,9 +9,9 @@ Sint32 main(void)
     SDL_Event     event;
     bool          running = true;
 
-    SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
+    SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     window = SDL_CreateWindow("SDL_GPU", 800, 600, SDL_WINDOW_RESIZABLE);
-    renderer = ffp_create_renderer(window, 60.0f / 180.0f * 3.14f);
+    renderer = ffp_create_renderer(window, 60.0f / 180.0f * 3.14159f);
 
     while (running) {
         while (SDL_PollEvent(&event)) {
