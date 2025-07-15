@@ -4,3 +4,4 @@
 -Werror
 -Weverything
 -Wno-padded
+-Wno-unsafe-buffer-usage

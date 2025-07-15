@@ -29,6 +29,7 @@ typedef struct {
     FFP_VertexRGBA a;
     FFP_VertexRGBA b;
     FFP_VertexRGBA c;
+    FFP_VertexRGBA d;
 } FFP_Triangle;
 
 extern FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov);

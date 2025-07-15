@@ -7,9 +7,10 @@ Sint32 main(void)
     SDL_Window         *window;
     FFP_Renderer       *renderer;
     const FFP_Triangle  triangle = {
-        { {  0.0f,  0.5f, -1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f } },
-        { { -0.5f, -0.5f, -1.0f }, { 0.0f, 1.0f, 0.0f, 0.0f } },
-        { {  0.5f, -0.5f, -1.0f }, { 0.0f, 0.0f, 1.0f, 0.0f } },
+        { { -0.5f,  0.5f, -1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+        { {  0.5f,  0.5f, -1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+        { { -0.5f, -0.5f, -1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
+        { {  0.5f, -0.5f, -1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } }
     };
     SDL_Event           event;
     bool                running = true;
