@@ -18,6 +18,4 @@ extern bool ffp_renderer_draw(FFP_Renderer *renderer);
 
 extern void ffp_destroy_renderer(FFP_Renderer *renderer);
 
-extern FFP_Shader *load_shader(FFP_Renderer *renderer, const char *path, Uint32 uniforms);
-
 #endif

@@ -16,7 +16,8 @@ struct FFP_Renderer {
     float                    matrix[16];
 };
 
-static bool set_projection_matrix(FFP_Renderer *renderer);
+static FFP_Shader *load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms);
+static bool        set_projection_matrix(FFP_Renderer *renderer);
 
 FFP_Renderer *ffp_create_renderer(SDL_Window *window, float fov)
 {
@@ -42,22 +43,20 @@ FFP_Renderer *ffp_create_renderer(SDL_Window *window, float fov)
         return NULL;
     }
 
-    renderer->vert_shader = load_shader(renderer, "./shader.vert.spv", 1);
+    renderer->vert_shader = load_shader(renderer->device, "./shader.vert.spv", 1);
     if (!renderer->vert_shader) {
         SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
         SDL_DestroyGPUDevice(renderer->device);
         SDL_free(renderer);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
-    renderer->frag_shader = load_shader(renderer, "./shader.frag.spv", 1);
+    renderer->frag_shader = load_shader(renderer->device, "./shader.frag.spv", 1);
     if (!renderer->frag_shader) {
         SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
         SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
         SDL_DestroyGPUDevice(renderer->device);
         SDL_free(renderer);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
@@ -144,31 +143,33 @@ void ffp_destroy_renderer(FFP_Renderer *renderer)
     SDL_free(renderer);
 }
 
-FFP_Shader *load_shader(FFP_Renderer *renderer, const char *path, Uint32 uniforms)
+FFP_Shader *load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms)
 {
     SDL_GPUShaderCreateInfo  info;
-    void                    *code = SDL_LoadFile(path, &info.code_size);
+    void                    *code;
     SDL_GPUShader           *shader;
 
+    SDL_memset(&info, 0, sizeof(info));
+
+    code = SDL_LoadFile(path, &info.code_size);
     if (!code) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return NULL;
     }
 
     if      (strstr(path, ".vert.spv")) info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
-    else if (strstr(path, ".frag.svp")) info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
+    else if (strstr(path, ".frag.spv")) info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
     else {
         SDL_free(code);
         return NULL;
     }
 
-    SDL_memset(&info, 0, sizeof(info));
-    info.code                 = code;
-    info.entrypoint           = "main";
-    info.format               = SDL_GPU_SHADERFORMAT_SPIRV;
-    info.num_uniform_buffers  = uniforms;
+    info.code                = code;
+    info.entrypoint          = "main";
+    info.format              = SDL_GPU_SHADERFORMAT_SPIRV;
+    info.num_uniform_buffers = uniforms;
 
-    shader = SDL_CreateGPUShader(renderer->device, &info);
+    shader = SDL_CreateGPUShader(device, &info);
     if (!shader) {
         SDL_free(code);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
