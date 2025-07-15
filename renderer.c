@@ -16,10 +16,10 @@ struct FFP_Renderer {
     float                    matrix[16];
 };
 
-static FFP_Shader *load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms);
-static bool        set_projection_matrix(FFP_Renderer *renderer);
+static FFP_Shader * load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms);
+static bool         set_projection_matrix(FFP_Renderer *renderer);
 
-FFP_Renderer *ffp_create_renderer(SDL_Window *window, float fov)
+FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
 {
     FFP_Renderer                      *renderer      = SDL_calloc(sizeof(FFP_Renderer), 1);
     SDL_GPUColorTargetDescription      target_desc;
@@ -143,7 +143,7 @@ void ffp_destroy_renderer(FFP_Renderer *renderer)
     SDL_free(renderer);
 }
 
-FFP_Shader *load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms)
+FFP_Shader * load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms)
 {
     SDL_GPUShaderCreateInfo  info;
     void                    *code;
@@ -182,21 +182,21 @@ FFP_Shader *load_shader(SDL_GPUDevice *device, const char *path, Uint32 uniforms
 
 bool set_projection_matrix(FFP_Renderer *renderer)
 {
-    int32_t width, height;
-    float S = 1.0f / SDL_tanf(renderer->fov / 2.0f);
+    Sint32 width, height;
+    float f = 1.0f / SDL_tanf(renderer->fov / 2.0f);
     if (!SDL_GetWindowSize(renderer->window, &width, &height)) return false;
-    renderer->matrix[0]  = S / ((float)width / (float)height);
+    renderer->matrix[0]  = f / ((float)width / (float)height);
     renderer->matrix[1]  = 0.0f;
     renderer->matrix[2]  = 0.0f;
     renderer->matrix[3]  = 0.0f;
     renderer->matrix[4]  = 0.0f;
-    renderer->matrix[5]  = S;
+    renderer->matrix[5]  = f;
     renderer->matrix[6]  = 0.0f;
     renderer->matrix[7]  = 0.0f;
     renderer->matrix[8]  = 0.0f;
     renderer->matrix[9]  = 0.0f;
-    renderer->matrix[10] = (0.1f + 100.0f) / (0.1f - 100.0f);
-    renderer->matrix[11] = 2.0f * 0.1f * 100.0f / (0.1f - 100.0f);
+    renderer->matrix[10] = (FFP_FAR + FFP_NEAR) / (FFP_NEAR - FFP_FAR);
+    renderer->matrix[11] = 2.0f * FFP_FAR * FFP_NEAR / (FFP_NEAR - FFP_FAR);
     renderer->matrix[12] = 0.0f;
     renderer->matrix[13] = 0.0f;
     renderer->matrix[14] = -1.0f;
