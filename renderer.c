@@ -122,11 +122,14 @@ void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
 
 bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *triangle)
 {
-    void                          *transmem;
-    SDL_GPUCommandBuffer          *command_buffer;
+    void                          *transmem     = NULL;
+    SDL_GPUCommandBuffer          *cmdbuf       = NULL;
     SDL_GPUTransferBufferLocation  transbuf_loc;
     SDL_GPUBufferRegion            vertbuf_reg;
-    SDL_GPUCopyPass               *copy_pass;
+    SDL_GPUCopyPass               *copy_pass    = NULL;
+
+    SDL_memset(&transbuf_loc, 0, sizeof(transbuf_loc));
+    SDL_memset(&vertbuf_reg, 0, sizeof(vertbuf_reg));
 
     transmem = SDL_MapGPUTransferBuffer(renderer->device, renderer->transbuf, false);
     if (!transmem) {
@@ -137,24 +140,20 @@ bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *tr
     SDL_memcpy(transmem, triangle, sizeof(FFP_Triangle));
     SDL_UnmapGPUTransferBuffer(renderer->device, renderer->transbuf);
 
-    command_buffer = SDL_AcquireGPUCommandBuffer(renderer->device);
-    if (!command_buffer) {
+    cmdbuf = SDL_AcquireGPUCommandBuffer(renderer->device);
+    if (!cmdbuf) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
     }
 
-    SDL_memset(&transbuf_loc, 0, sizeof(transbuf_loc));
+    copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
     transbuf_loc.transfer_buffer = renderer->transbuf;
-
-    SDL_memset(&vertbuf_reg, 0, sizeof(vertbuf_reg));
     vertbuf_reg.buffer = renderer->vertbuf.buffer;
     vertbuf_reg.size   = sizeof(FFP_Triangle);
-
-    copy_pass = SDL_BeginGPUCopyPass(command_buffer);
     SDL_UploadToGPUBuffer(copy_pass, &transbuf_loc, &vertbuf_reg, false);
-    SDL_EndGPUCopyPass(copy_pass);
 
-    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) {
+    SDL_EndGPUCopyPass(copy_pass);
+    if (!SDL_SubmitGPUCommandBuffer(cmdbuf)) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
     }
@@ -164,40 +163,41 @@ bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *tr
 
 bool ffp_renderer_draw(FFP_Renderer *renderer)
 {
-    SDL_GPUCommandBuffer   *command_buffer = SDL_AcquireGPUCommandBuffer(renderer->device);
+    SDL_GPUCommandBuffer   *cmdbuf      = SDL_AcquireGPUCommandBuffer(renderer->device);
     SDL_GPUColorTargetInfo  target_info;
-    SDL_GPURenderPass      *render_pass;
+    SDL_GPURenderPass      *render_pass = NULL;
 
-    if (!command_buffer) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
-        return false;
-    }
-
-    if (!set_projection_matrix(renderer)) {
-        SDL_CancelGPUCommandBuffer(command_buffer);
+    if (!cmdbuf) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
     }
 
     SDL_memset(&target_info, 0, sizeof(target_info));
-    target_info.clear_color.r = 0.25f;
-    target_info.clear_color.g = 0.25f;
-    target_info.clear_color.b = 0.25f;
-    target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer, renderer->window, &target_info.texture, NULL, NULL)) {
-        SDL_CancelGPUCommandBuffer(command_buffer);
+
+    if (!set_projection_matrix(renderer)) {
+        SDL_CancelGPUCommandBuffer(cmdbuf);
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
     }
 
-    render_pass = SDL_BeginGPURenderPass(command_buffer, &target_info, 1, NULL);
+    target_info.clear_color.r = 0.25f;
+    target_info.clear_color.g = 0.25f;
+    target_info.clear_color.b = 0.25f;
+    target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, renderer->window, &target_info.texture, NULL, NULL)) {
+        SDL_CancelGPUCommandBuffer(cmdbuf);
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return false;
+    }
+
+    render_pass = SDL_BeginGPURenderPass(cmdbuf, &target_info, 1, NULL);
     SDL_BindGPUGraphicsPipeline(render_pass, renderer->pipeline);
     SDL_BindGPUVertexBuffers(render_pass, 0, &renderer->vertbuf, 1);
-    SDL_PushGPUVertexUniformData(command_buffer, 0, renderer->matrix, sizeof(renderer->matrix));
+    SDL_PushGPUVertexUniformData(cmdbuf, 0, renderer->matrix, sizeof(renderer->matrix));
     SDL_DrawGPUPrimitives(render_pass, 3, 1, 0, 0);
-    SDL_EndGPURenderPass(render_pass);
 
-    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) {
+    SDL_EndGPURenderPass(render_pass);
+    if (!SDL_SubmitGPUCommandBuffer(cmdbuf)) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
     }
