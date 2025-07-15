@@ -100,15 +100,15 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     }
 
     SDL_memset(&vertbuf_desc, 0, sizeof(vertbuf_desc));
-    vertbuf_desc.pitch = sizeof(FFP_Vertex);
+    vertbuf_desc.pitch = sizeof(FFP_VertexRGBA);
 
     SDL_memset(vertbuf_attrs, 0, sizeof(vertbuf_attrs));
     vertbuf_attrs[0].location = 0;
     vertbuf_attrs[0].format   = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-    vertbuf_attrs[0].offset   = offsetof(FFP_Vertex, pos);
+    vertbuf_attrs[0].offset   = offsetof(FFP_VertexRGBA, position);
     vertbuf_attrs[1].location = 1;
     vertbuf_attrs[1].format   = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
-    vertbuf_attrs[1].offset   = offsetof(FFP_Vertex, color);
+    vertbuf_attrs[1].offset   = offsetof(FFP_VertexRGBA, color);
 
     SDL_memset(&target_desc, 0, sizeof(target_desc));
     target_desc.format = SDL_GetGPUSwapchainTextureFormat(renderer->device, renderer->window);
@@ -151,7 +151,7 @@ void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
     renderer->fov = fov;
 }
 
-bool ffp_renderer_upload_vertices(FFP_Renderer *renderer, const FFP_Triangle *triangle)
+bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *triangle)
 {
     void                          *transmem;
     SDL_GPUCommandBuffer          *command_buffer;
