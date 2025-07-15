@@ -6,6 +6,8 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_video.h>
 
+#include <stddef.h>
+
 struct FFP_Renderer {
     SDL_Window              *window;
     SDL_GPUDevice           *device;
@@ -27,7 +29,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     SDL_GPUTransferBufferCreateInfo    transbuf_info;
     SDL_GPUBufferCreateInfo            vertbuf_info;
     SDL_GPUVertexBufferDescription     vertbuf_desc;
-    SDL_GPUVertexAttribute             vertbuf_attr;
+    SDL_GPUVertexAttribute             vertbuf_attrs[2];
     SDL_GPUColorTargetDescription      target_desc;
     SDL_GPUGraphicsPipelineCreateInfo  pipeline_info;
 
@@ -51,7 +53,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
 
     SDL_memset(&transbuf_info, 0, sizeof(transbuf_info));
     transbuf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    transbuf_info.size = sizeof(float) * 9;
+    transbuf_info.size = sizeof(FFP_Triangle);
 
     renderer->transbuf = SDL_CreateGPUTransferBuffer(renderer->device, &transbuf_info);
     if (!renderer->transbuf) {
@@ -64,7 +66,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
 
     SDL_memset(&vertbuf_info, 0, sizeof(vertbuf_info));
     vertbuf_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-    vertbuf_info.size = sizeof(float) * 9;
+    vertbuf_info.size = sizeof(FFP_Triangle);
 
     renderer->vertbuf.buffer = SDL_CreateGPUBuffer(renderer->device, &vertbuf_info);
     if (!renderer->vertbuf.buffer) {
@@ -86,7 +88,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
         return NULL;
     }
 
-    renderer->frag_shader = load_shader(renderer->device, "./shader.frag.spv", 1);
+    renderer->frag_shader = load_shader(renderer->device, "./shader.frag.spv", 0);
     if (!renderer->frag_shader) {
         SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
         SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
@@ -98,10 +100,15 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     }
 
     SDL_memset(&vertbuf_desc, 0, sizeof(vertbuf_desc));
-    vertbuf_desc.pitch = sizeof(float) * 3;
+    vertbuf_desc.pitch = sizeof(FFP_Vertex);
 
-    SDL_memset(&vertbuf_attr, 0, sizeof(vertbuf_attr));
-    vertbuf_attr.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
+    SDL_memset(vertbuf_attrs, 0, sizeof(vertbuf_attrs));
+    vertbuf_attrs[0].location = 0;
+    vertbuf_attrs[0].format   = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
+    vertbuf_attrs[0].offset   = offsetof(FFP_Vertex, pos);
+    vertbuf_attrs[1].location = 1;
+    vertbuf_attrs[1].format   = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertbuf_attrs[1].offset   = offsetof(FFP_Vertex, color);
 
     SDL_memset(&target_desc, 0, sizeof(target_desc));
     target_desc.format = SDL_GetGPUSwapchainTextureFormat(renderer->device, renderer->window);
@@ -111,8 +118,8 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     pipeline_info.fragment_shader                               = renderer->frag_shader;
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &vertbuf_desc;
     pipeline_info.vertex_input_state.num_vertex_buffers         = 1;
-    pipeline_info.vertex_input_state.vertex_attributes          = &vertbuf_attr;
-    pipeline_info.vertex_input_state.num_vertex_attributes      = 1;
+    pipeline_info.vertex_input_state.vertex_attributes          = vertbuf_attrs;
+    pipeline_info.vertex_input_state.num_vertex_attributes      = sizeof(vertbuf_attrs) / sizeof(SDL_GPUVertexAttribute);
     pipeline_info.target_info.color_target_descriptions         = &target_desc;
     pipeline_info.target_info.num_color_targets                 = 1;
 
@@ -144,7 +151,7 @@ void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
     renderer->fov = fov;
 }
 
-bool ffp_renderer_upload_vertices(FFP_Renderer *renderer, float *vertices)
+bool ffp_renderer_upload_vertices(FFP_Renderer *renderer, const FFP_Triangle *triangle)
 {
     void                          *transmem;
     SDL_GPUCommandBuffer          *command_buffer;
@@ -158,7 +165,7 @@ bool ffp_renderer_upload_vertices(FFP_Renderer *renderer, float *vertices)
         return false;
     }
 
-    SDL_memcpy(transmem, vertices, sizeof(float) * 9);
+    SDL_memcpy(transmem, triangle, sizeof(FFP_Triangle));
     SDL_UnmapGPUTransferBuffer(renderer->device, renderer->transbuf);
 
     command_buffer = SDL_AcquireGPUCommandBuffer(renderer->device);
@@ -172,7 +179,7 @@ bool ffp_renderer_upload_vertices(FFP_Renderer *renderer, float *vertices)
 
     SDL_memset(&vertbuf_reg, 0, sizeof(vertbuf_reg));
     vertbuf_reg.buffer = renderer->vertbuf.buffer;
-    vertbuf_reg.size   = sizeof(float) * 9;
+    vertbuf_reg.size   = sizeof(FFP_Triangle);
 
     copy_pass = SDL_BeginGPUCopyPass(command_buffer);
     SDL_UploadToGPUBuffer(copy_pass, &transbuf_loc, &vertbuf_reg, false);
