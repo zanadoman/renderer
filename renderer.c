@@ -9,6 +9,7 @@
 struct FFP_Renderer {
     SDL_Window              *window;
     SDL_GPUDevice           *device;
+    SDL_GPUTransferBuffer   *transbuf;
     SDL_GPUBufferBinding     vertbuf;
     SDL_GPUShader           *vert_shader;
     SDL_GPUShader           *frag_shader;
@@ -23,6 +24,7 @@ static bool         set_projection_matrix(FFP_Renderer *renderer);
 FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
 {
     FFP_Renderer                      *renderer      = SDL_calloc(sizeof(FFP_Renderer), 1);
+    SDL_GPUTransferBufferCreateInfo    transbuf_info;
     SDL_GPUBufferCreateInfo            vertbuf_info;
     SDL_GPUVertexBufferDescription     vertbuf_desc;
     SDL_GPUVertexAttribute             vertbuf_attr;
@@ -47,12 +49,26 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
         return NULL;
     }
 
+    SDL_memset(&transbuf_info, 0, sizeof(transbuf_info));
+    transbuf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    transbuf_info.size = sizeof(float) * 9;
+
+    renderer->transbuf = SDL_CreateGPUTransferBuffer(renderer->device, &transbuf_info);
+    if (!renderer->transbuf) {
+        SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
+        SDL_DestroyGPUDevice(renderer->device);
+        SDL_free(renderer);
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return NULL;
+    }
+
     SDL_memset(&vertbuf_info, 0, sizeof(vertbuf_info));
     vertbuf_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     vertbuf_info.size = sizeof(float) * 9;
 
     renderer->vertbuf.buffer = SDL_CreateGPUBuffer(renderer->device, &vertbuf_info);
     if (!renderer->vertbuf.buffer) {
+        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
         SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
         SDL_DestroyGPUDevice(renderer->device);
         SDL_free(renderer);
@@ -63,6 +79,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     renderer->vert_shader = load_shader(renderer->device, "./shader.vert.spv", 1);
     if (!renderer->vert_shader) {
         SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
+        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
         SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
         SDL_DestroyGPUDevice(renderer->device);
         SDL_free(renderer);
@@ -73,6 +90,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     if (!renderer->frag_shader) {
         SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
         SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
+        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
         SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
         SDL_DestroyGPUDevice(renderer->device);
         SDL_free(renderer);
@@ -103,6 +121,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
         SDL_ReleaseGPUShader(renderer->device, renderer->frag_shader);
         SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
         SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
+        SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
         SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
         SDL_DestroyGPUDevice(renderer->device);
         SDL_free(renderer);
@@ -170,6 +189,7 @@ void ffp_destroy_renderer(FFP_Renderer *renderer)
     SDL_ReleaseGPUShader(renderer->device, renderer->frag_shader);
     SDL_ReleaseGPUShader(renderer->device, renderer->vert_shader);
     SDL_ReleaseGPUBuffer(renderer->device, renderer->vertbuf.buffer);
+    SDL_ReleaseGPUTransferBuffer(renderer->device, renderer->transbuf);
     SDL_ReleaseWindowFromGPUDevice(renderer->device, renderer->window);
     SDL_DestroyGPUDevice(renderer->device);
     SDL_free(renderer);
