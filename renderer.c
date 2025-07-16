@@ -179,6 +179,78 @@ bool ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad)
     return true;
 }
 
+SDL_GPUTexture * ffp_renderer_upload_surface(FFP_Renderer *renderer, const SDL_Surface *surface)
+{
+    SDL_GPUTextureCreateInfo         texture_info;
+    SDL_GPUTextureRegion             texture_reg;
+    SDL_GPUTransferBufferCreateInfo  transbuf_info;
+    SDL_GPUTextureTransferInfo       transfer_info;
+    void                            *transmem      = NULL;
+    SDL_GPUCommandBuffer            *cmdbuf        = NULL;
+    SDL_GPUCopyPass                 *copy_pass     = NULL;
+
+    SDL_memset(&texture_info,  0, sizeof(texture_info));
+    SDL_memset(&texture_reg,   0, sizeof(texture_reg));
+    SDL_memset(&transbuf_info, 0, sizeof(transbuf_info));
+    SDL_memset(&transfer_info, 0, sizeof(transfer_info));
+
+    texture_info.format               = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    texture_info.usage                = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    texture_info.width                = (Uint32)surface->w;
+    texture_info.height               = (Uint32)surface->h;
+    texture_info.layer_count_or_depth = 1;
+    texture_info.num_levels           = 1;
+    texture_reg.texture               = SDL_CreateGPUTexture(renderer->device, &texture_info);
+    texture_reg.w                     = texture_info.width;
+    texture_reg.h                     = texture_info.height;
+    texture_reg.d                     = texture_info.layer_count_or_depth;
+    if (!texture_reg.texture) {
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return NULL;
+    }
+
+    transbuf_info.usage           = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    transbuf_info.size            = texture_info.width * texture_info.height * 4;
+    transfer_info.transfer_buffer = SDL_CreateGPUTransferBuffer(renderer->device, &transbuf_info);
+    if (!transfer_info.transfer_buffer) {
+        SDL_ReleaseGPUTexture(renderer->device, texture_reg.texture);
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return NULL;
+    }
+
+    transmem = SDL_MapGPUTransferBuffer(renderer->device, transfer_info.transfer_buffer, false);
+    if (!transmem) {
+        SDL_ReleaseGPUTransferBuffer(renderer->device, transfer_info.transfer_buffer);
+        SDL_ReleaseGPUTexture(renderer->device, texture_reg.texture);
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return NULL;
+    }
+
+    SDL_memcpy(transmem, surface->pixels, transbuf_info.size);
+    SDL_UnmapGPUTransferBuffer(renderer->device, transfer_info.transfer_buffer);
+
+    cmdbuf = SDL_AcquireGPUCommandBuffer(renderer->device);
+    if (!cmdbuf) {
+        SDL_ReleaseGPUTransferBuffer(renderer->device, transfer_info.transfer_buffer);
+        SDL_ReleaseGPUTexture(renderer->device, texture_reg.texture);
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return NULL;
+    }
+
+    copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
+    SDL_UploadToGPUTexture(copy_pass, &transfer_info, &texture_reg, false);
+    SDL_ReleaseGPUTransferBuffer(renderer->device, transfer_info.transfer_buffer);
+    SDL_EndGPUCopyPass(copy_pass);
+
+    if (!SDL_SubmitGPUCommandBuffer(cmdbuf)) {
+        SDL_ReleaseGPUTexture(renderer->device, texture_reg.texture);
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
+        return NULL;
+    }
+
+    return texture_reg.texture;
+}
+
 bool ffp_renderer_draw(FFP_Renderer *renderer)
 {
     SDL_GPUCommandBuffer   *cmdbuf      = SDL_AcquireGPUCommandBuffer(renderer->device);

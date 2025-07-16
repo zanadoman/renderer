@@ -32,11 +32,13 @@ typedef struct {
     FFP_VertexRGBA d;
 } FFP_Quad;
 
-extern FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov);
-extern float          ffp_get_renderer_fov(const FFP_Renderer *renderer);
-extern void           ffp_set_renderer_fov(FFP_Renderer *renderer, float fov);
-extern bool           ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad);
-extern bool           ffp_renderer_draw(FFP_Renderer *renderer);
-extern void           ffp_destroy_renderer(FFP_Renderer *renderer);
+extern FFP_Renderer *   ffp_create_renderer(SDL_Window *window, float fov);
+extern float            ffp_get_renderer_fov(const FFP_Renderer *renderer);
+extern void             ffp_set_renderer_fov(FFP_Renderer *renderer, float fov);
+extern bool             ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad);
+extern SDL_GPUTexture * ffp_renderer_upload_surface(FFP_Renderer *renderer, const SDL_Surface *surface);
+extern bool             ffp_renderer_draw(FFP_Renderer *renderer);
+extern void             ffp_destroy_renderer(FFP_Renderer *renderer);
+
 
 #endif
