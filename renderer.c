@@ -59,7 +59,7 @@ FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
     }
 
     vertbuf_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-    vertbuf_info.size = sizeof(FFP_Triangle);
+    vertbuf_info.size = sizeof(FFP_Quad);
     renderer->vertbuf.buffer = SDL_CreateGPUBuffer(renderer->device, &vertbuf_info);
     if (!renderer->vertbuf.buffer) {
         ffp_destroy_renderer(renderer);
@@ -132,7 +132,7 @@ void ffp_set_renderer_fov(FFP_Renderer *renderer, float fov)
     renderer->fov = fov;
 }
 
-bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *triangle)
+bool ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad)
 {
     Uint8                         *transmem     = NULL;
     Uint16                         indices[6]   = { 0, 1, 2, 2, 1, 3 };
@@ -150,8 +150,8 @@ bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *tr
         return false;
     }
 
-    SDL_memcpy(transmem,                        triangle, sizeof(FFP_Triangle));
-    SDL_memcpy(transmem + sizeof(FFP_Triangle), indices,  sizeof(indices));
+    SDL_memcpy(transmem,                        quad, sizeof(FFP_Quad));
+    SDL_memcpy(transmem + sizeof(FFP_Quad), indices,  sizeof(indices));
     SDL_UnmapGPUTransferBuffer(renderer->device, renderer->transbuf);
 
     cmdbuf = SDL_AcquireGPUCommandBuffer(renderer->device);
@@ -163,7 +163,7 @@ bool ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *tr
     copy_pass = SDL_BeginGPUCopyPass(cmdbuf);
     transbuf_loc.transfer_buffer = renderer->transbuf;
     dstbuf_reg.buffer = renderer->vertbuf.buffer;
-    dstbuf_reg.size   = sizeof(FFP_Triangle);
+    dstbuf_reg.size   = sizeof(FFP_Quad);
     SDL_UploadToGPUBuffer(copy_pass, &transbuf_loc, &dstbuf_reg, false);
     transbuf_loc.offset += dstbuf_reg.size;
     dstbuf_reg.buffer    = renderer->indbuf.buffer;

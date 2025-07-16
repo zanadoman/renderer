@@ -30,12 +30,12 @@ typedef struct {
     FFP_VertexRGBA b;
     FFP_VertexRGBA c;
     FFP_VertexRGBA d;
-} FFP_Triangle;
+} FFP_Quad;
 
 extern FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov);
 extern float          ffp_get_renderer_fov(const FFP_Renderer *renderer);
 extern void           ffp_set_renderer_fov(FFP_Renderer *renderer, float fov);
-extern bool           ffp_renderer_upload_triangle(FFP_Renderer *renderer, const FFP_Triangle *triangle);
+extern bool           ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad);
 extern bool           ffp_renderer_draw(FFP_Renderer *renderer);
 extern void           ffp_destroy_renderer(FFP_Renderer *renderer);
 
