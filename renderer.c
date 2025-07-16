@@ -24,7 +24,7 @@ static bool         set_projection_matrix(FFP_Renderer *renderer);
 
 FFP_Renderer * ffp_create_renderer(SDL_Window *window, float fov)
 {
-    FFP_Renderer                      *renderer      = SDL_calloc(sizeof(FFP_Renderer), 1);
+    FFP_Renderer                      *renderer         = SDL_calloc(1, sizeof(FFP_Renderer));
     SDL_GPUBufferCreateInfo            vertbuf_info;
     SDL_GPUBufferCreateInfo            indbuf_info;
     SDL_GPUTransferBufferCreateInfo    transbuf_info;
@@ -142,7 +142,7 @@ bool ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad)
     SDL_GPUCopyPass               *copy_pass    = NULL;
 
     SDL_memset(&transbuf_loc, 0, sizeof(transbuf_loc));
-    SDL_memset(&dstbuf_reg,  0, sizeof(dstbuf_reg));
+    SDL_memset(&dstbuf_reg,   0, sizeof(dstbuf_reg));
 
     transmem = SDL_MapGPUTransferBuffer(renderer->device, renderer->transbuf, false);
     if (!transmem) {
@@ -169,8 +169,8 @@ bool ffp_renderer_upload_quad(FFP_Renderer *renderer, const FFP_Quad *quad)
     dstbuf_reg.buffer    = renderer->indbuf.buffer;
     dstbuf_reg.size      = sizeof(indices);
     SDL_UploadToGPUBuffer(copy_pass, &transbuf_loc, &dstbuf_reg, false);
-
     SDL_EndGPUCopyPass(copy_pass);
+
     if (!SDL_SubmitGPUCommandBuffer(cmdbuf)) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
@@ -215,8 +215,8 @@ bool ffp_renderer_draw(FFP_Renderer *renderer)
     SDL_BindGPUIndexBuffer(render_pass, &renderer->indbuf, SDL_GPU_INDEXELEMENTSIZE_16BIT);
     SDL_PushGPUVertexUniformData(cmdbuf, 0, renderer->matrix, sizeof(renderer->matrix));
     SDL_DrawGPUIndexedPrimitives(render_pass, 6, 1, 0, 0, 0);
-
     SDL_EndGPURenderPass(render_pass);
+
     if (!SDL_SubmitGPUCommandBuffer(cmdbuf)) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s\n", SDL_GetError());
         return false;
